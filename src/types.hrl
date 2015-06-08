@@ -6,11 +6,10 @@
 
 %% (un)conditional probability
 -type probability() :: cond_prob() | uncond_prob().
--type cond_prob() :: {label(), kvlist(context(), prob_dist())}.
--type uncond_prob() :: {label(), [{[], prob_dist()}]}.
+-type cond_prob() :: {pvar(), kvlist(context(), prob_dist())}.
+-type uncond_prob() :: {pvar(), [{[], prob_dist()}]}.
 %% An unconditional probability is a conditional probability with a single 'empty' context.
 
--type label()     :: atom().
 -type context()   :: kvlist(pvar(), pval()).
 
 %% probability distribution
