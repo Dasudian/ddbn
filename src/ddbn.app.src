@@ -1,0 +1,13 @@
+%%-*- mode: erlang -*-
+%% Copyright (c) 2015 Llaisdy`
+
+{application, ddbn, 
+ [
+  {description, "Distributed Dynamic Bayesian Network"},
+  {vsn, "0.0.1"},
+  {modules, []},
+  {registered, []},
+  {applications, [kernel, stdlib]},
+  {mod, {ddbn, []}},
+  {env, []}
+ ]}.

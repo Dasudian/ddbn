@@ -1,8 +1,7 @@
-all:
-	erlc -o ebin src/*.erl
+PROJECT = ddbn
 
-test: all
-	erlc -o test test/*.erl
+dev: app
+	erl -config config/dev -pa deps/*/ebin -pa ebin
 
-clean:
-	rm ebin/*
+include erlang.mk
+
