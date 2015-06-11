@@ -1,60 +1,115 @@
 %% Copyright (c) 2015 Llaisdy
 
 -module(ddbn_node).
--behaviour(gen_server).
+-behaviour(gen_fsm).
 -include("types.hrl").
 
 -export([start_link/1,
 	 stop/1, 
-	 report/1]).
+	 report/1,
+	 set_cp/2,
+	 intercom/2
+	]).
 
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+-export([init/1, state_name/2, state_name/3, handle_event/3,
+	 handle_sync_event/4, handle_info/3, terminate/3, code_change/4]).
 
--record(state, {
-	  name :: any()
+-type fsm_state() :: unobserved | observed | descendant_observed.
+-type pointer() :: any().  %% pid or other identifier
+
+-record(loop_data, {
+	  name     :: pvar(),
+	  cp       :: probability(),
+	  parents  :: kvlist(pvar(), {pointer(), probability()}),
+	  children :: kvlist(pvar(), {pointer(), probability()})
 	 }).
 
 %%%% api
 
 -spec start_link(Name :: any()) -> {ok, pid()}.
 start_link(Name) ->
-    gen_server:start_link(?MODULE, [Name], []).
+    gen_fsm:start_link(?MODULE, [Name], []).
 
--spec stop(Pid :: pid()) -> stopped.
 stop(Pid) ->
-    gen_server:call(Pid, stop).
+    gen_fsm:sync_send_all_state_event(Pid, stop).
 
-
--spec report(Pid :: pid()) -> tuple().
 report(Pid) ->
-    gen_server:call(Pid, report).
+    gen_fsm:sync_send_all_state_event(Pid, report).
 
-%%%% gen_server
+set_cp(Pid, CP) ->
+    gen_fsm:send_all_state_event(Pid, {set_cp, CP}).
+
+intercom(Pid, Message) ->
+    gen_fsm:send_all_state_event(Pid, Message).
+
+%%%% gen_fsm
 
 init([Name]) ->
-    {ok, #state{name = Name}}.
+    {ok, unobserved, #loop_data{name=Name, parents=[], children=[]}}.
 
-handle_call(stop, _From, State) ->
-    {stop, normal, stopped, State};
+state_name(_Event, LoopData) ->
+    {next_state, state_name, LoopData}.
 
-handle_call(report, _From, State) ->
-    {reply, State, State};
+state_name(_Event, _From, LoopData) ->
+    Reply = ok,
+    {reply, Reply, state_name, LoopData}.
 
-handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
+handle_event({set_cp, CP}, StateName, 
+	     LoopData=#loop_data{name=Name,
+				 parents=Parents,
+				 children=Children}) ->
+    NewState = case is_definite_observation(CP) of
+		   true ->
+		       publish(descendant_observed, Parents),
+		       observed;
+		   false ->
+		       not_observed(StateName)
+	       end,
+    publish({update, Name, CP}, Parents),
+    publish({update, Name, CP}, Children),
+    {next_state, NewState, LoopData#loop_data{cp=CP}};
 
-handle_cast(_Msg, State) ->
-    {noreply, State}.
+handle_event(_Event, StateName, LoopData) ->
+    {next_state, StateName, LoopData}.
 
-handle_info(_Info, State) ->
-    {noreply, State}.
+handle_sync_event(stop, _From, _StateName, LoopData) ->
+    {stop, normal, stopped, LoopData};
 
-terminate(_Reason, _State) ->
+handle_sync_event(report, _From, StateName, LoopData) ->
+    {reply, LoopData, StateName, LoopData};
+
+handle_sync_event(_Event, _From, StateName, LoopData) ->
+    Reply = ok,
+    {reply, Reply, StateName, LoopData}.
+
+handle_info(_Info, StateName, LoopData) ->
+    {next_state, StateName, LoopData}.
+
+terminate(_Reason, _StateName, _LoopData) ->
     ok.
 
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+code_change(_OldVsn, StateName, LoopData, _Extra) ->
+    {ok, StateName, LoopData}.
 
 %%%% private
+
+has_a_one([{_,1.0}|_]) -> true;
+has_a_one([])          -> false;
+has_a_one([_|KVs])     -> has_a_one(KVs).
+
+-spec is_definite_observation(probability()) -> true | false.
+is_definite_observation({_, [{[], KVs}]}) ->
+    has_a_one(KVs);
+is_definite_observation(_) ->
+    false.
+
+-spec not_observed(fsm_state()) -> fsm_state().
+not_observed(observed) -> unobserved;
+not_observed(X)        -> X.
+
+publish(Message, Recipients) ->
+    lists:foreach(fun({_,{Id,_}}) -> 
+			  ddbn_node:intercom(Id, Message)
+		  end,
+		  Recipients).
 

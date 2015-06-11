@@ -36,10 +36,10 @@ end_per_testcase(_, _Config) ->
 
 single_node(_Config) ->
     {ok, Pid} = ddbn_sup:start_node(st),
-    unobserved = ddbn_node:get_state(Pid),
-    ddbn_node:set_p(Pid, cp(st)),
+    ddbn_node:set_cp(Pid, cp(st)),
     {st, Exp} = p(st, orphan),
-    {st, Act} = ddbn_node:get_p(Pid),
+    {st, Act} = ddbn_node:report(Pid),
+%%    {st, Act} = ddbn_node:get_cp(Pid),
     test_utils:similar_kvlist(Exp, Act).
 
 %%%% helpers
