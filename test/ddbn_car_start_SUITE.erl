@@ -35,7 +35,7 @@ end_per_testcase(_, _Config) ->
 %%%% tests
 
 single_node(_Config) ->
-    {ok, Pid} = ddbn_node:start_link(st),
+    {ok, Pid} = ddbn_sup:start_node(st),
     unobserved = ddbn_node:get_state(Pid),
     ddbn_node:set_p(Pid, cp(st)),
     {st, Exp} = p(st, orphan),
