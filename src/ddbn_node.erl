@@ -76,7 +76,8 @@ handle_sync_event(stop, _From, _StateName, LoopData) ->
     {stop, normal, stopped, LoopData};
 
 handle_sync_event(report, _From, StateName, LoopData) ->
-    {reply, LoopData, StateName, LoopData};
+    Reply = make_report(StateName, LoopData),
+    {reply, Reply, StateName, LoopData};
 
 handle_sync_event(_Event, _From, StateName, LoopData) ->
     Reply = ok,
@@ -102,6 +103,14 @@ is_definite_observation({_, [{[], KVs}]}) ->
     has_a_one(KVs);
 is_definite_observation(_) ->
     false.
+
+-spec make_report(fsm_state(), #loop_data{}) -> kvlist(atom(), term()).
+make_report(State, #loop_data{name=Name,
+			      cp=CP,
+			      parents=Parents,
+			      children=Children}) ->
+    [{name, Name}, {state, State}, {cp, CP}, 
+     {parents, Parents}, {children, Children}].
 
 -spec not_observed(fsm_state()) -> fsm_state().
 not_observed(observed) -> unobserved;

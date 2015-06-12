@@ -38,8 +38,8 @@ single_node(_Config) ->
     {ok, Pid} = ddbn_sup:start_node(st),
     ddbn_node:set_cp(Pid, cp(st)),
     {st, Exp} = p(st, orphan),
-    {st, Act} = ddbn_node:report(Pid),
-%%    {st, Act} = ddbn_node:get_cp(Pid),
+    ct:pal("Node report:~n~n~p~n~n", [ddbn_node:report(Pid)]),
+    {st, Act} = ddbn_node:get_p(Pid),
     test_utils:similar_kvlist(Exp, Act).
 
 %%%% helpers
