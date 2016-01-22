@@ -1,5 +1,4 @@
 %%-*- mode: erlang -*-
-%% Copyright (c) 2015 Llaisdy`
 
 {application, ddbn, 
  [
